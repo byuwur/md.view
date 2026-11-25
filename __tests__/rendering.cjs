@@ -22,7 +22,10 @@ test("MD library", { timeout: 30000 }, async (t) => {
   // Load authored files directly; CDN availability is not part of this contract.
   await page.route("**/*", (route) => route.abort());
   // ===== BROWSER FIXTURE =====
-  await page.setContent('<!doctype html><meta charset="UTF-8"><div id="viewer"></div>');
+  await page.setContent(
+    /* HTML */ `<!doctype html><meta charset="UTF-8" />
+      <div id="viewer"></div>`
+  );
   await page.addStyleTag({ path: path.join(__dirname, "../md.css") });
   await page.addScriptTag({ path: path.join(__dirname, "../md.js") });
   await page.evaluate(() => {
@@ -59,7 +62,14 @@ test("MD library", { timeout: 30000 }, async (t) => {
   });
 
   await t.test("keeps HTML and unsafe links inert", async () => {
-    await page.evaluate(() => byMDviewer(root, '<img src=x onerror="window.injected=1">\n\n[bad](javascript:alert(1))'));
+    await page.evaluate(() =>
+      byMDviewer(
+        root,
+        `<img src=x onerror="window.injected=1">
+
+[bad](javascript:alert(1))`
+      )
+    );
     assert.equal(await page.locator("#viewer img, #viewer script, #viewer a[href^='javascript:']").count(), 0);
     assert.equal(await page.evaluate(() => window.injected), undefined);
   });
