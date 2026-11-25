@@ -125,10 +125,9 @@
     content.dataset.byViewDefaultFontSize = size || previous?.dataset.byViewDefaultFontSize || "";
   };
 
-  const syncMotion = (element, options) => {
-    const enabled = options.animations !== false;
-    const appear = enabled && Boolean(options.appearAnimation);
-    element.classList.toggle("byVIEWmotion", enabled);
+  const syncMotion = (element, { animations = true, appearAnimation = false }) => {
+    const appear = animations && appearAnimation;
+    element.classList.toggle("byVIEWmotion", animations);
     element.classList.toggle("byVIEWappear", appear);
     return appear;
   };
@@ -149,12 +148,11 @@
   };
 
   /**
-   * Adds container light/dark controls, retaining legacy stylesheet links as a fallback.
+   * Create the theme toggle, retaining legacy stylesheet links as a fallback.
    * @param {HTMLElement} element Viewer container and theme owner.
-   * @param {HTMLElement} controls Toolbar control group.
-   * @returns {{button: HTMLButtonElement, sync: Function}} Mounted theme control.
+   * @returns {{button: HTMLButtonElement, sync: Function}} Theme control and label update.
    */
-  const appendThemeToggle = (element, controls) => {
+  const createThemeToggle = (element) => {
     const themePattern = new RegExp(`^([^?#]*/)?${themeFile}\\.(light|dark)\\.css([?#].*)?$`, "i");
     const stylesheet = [document.getElementById("byVIEWtheme"), ...document.querySelectorAll('link[rel~="stylesheet"]')].find((link) => link && themePattern.test(link.getAttribute("href") || ""));
     const legacyTheme = () => (stylesheet?.isConnected ? (stylesheet.getAttribute("href") || "").match(themePattern) : null);
@@ -189,20 +187,17 @@
     button.addEventListener("focus", sync);
     button.addEventListener("pointerenter", sync);
     sync();
-    controls.appendChild(button);
     return { button, sync };
   };
 
   /**
-   * Adds text size controls for a renderer.
+   * Create text size controls for a renderer.
    * @param {HTMLElement} element - Renderer whose font size is changed.
-   * @param {HTMLElement} controls - Toolbar that receives the controls.
-   * @return {{group: HTMLElement, sync: Function}} Mounted text size controls.
+   * @return {{group: HTMLElement, sync: Function}} Size controls and button state update.
    */
-  const appendFontSizeControls = (element, controls) => {
+  const createFontSizeControls = (element) => {
     const sizes = document.createElement("div");
     sizes.className = "byVIEWfontSizes";
-    controls.appendChild(sizes);
     const getSize = () => (parseFloat(getComputedStyle(element).fontSize) || 16) / (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
     const decrease = document.createElement("button");
     const increase = document.createElement("button");
@@ -245,13 +240,12 @@
   };
 
   /**
-   * Add a copy action for the complete source, including content outside the visible rendered chunk.
-   * @param {HTMLElement} controls Toolbar control group.
+   * Create a copy action for the complete source, including content outside the visible rendered chunk.
    * @param {Function} getText Callback that returns the text to copy.
    * @param {string} label Human-readable label.
-   * @returns {void}
+   * @returns {HTMLButtonElement}
    */
-  const appendCopyButton = (controls, getText, label) => {
+  const createCopyButton = (getText, label) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "byVIEWcopy";
@@ -273,7 +267,6 @@
     reset();
     button.addEventListener("mouseleave", reset);
     button.addEventListener("focusout", reset);
-    controls.appendChild(button);
     button.addEventListener("click", async (event) => {
       button.disabled = true;
       let message = "Copied!";
@@ -312,30 +305,39 @@
       if (info.childNodes.length) info.append(` · v${version} · `);
       info.appendChild(link);
     }
-    const theme = appendThemeToggle(element, controls);
-    const sizes = appendFontSizeControls(content, controls);
-    const copy = appendCopyButton(controls, getText, copyLabel);
+    let theme, sizes, copy;
     const update = (options, changes = {}) => {
+      const rebuild = ["toolbar", "credits", "themeToggle", "fontSizeControls", "copyButton"].some((key) => key in changes && changes[key] !== options[key]);
       if ("fontSize" in changes || "theme" in changes || "palette" in changes) {
         applyContentAppearance(element, changes, content);
-        theme.sync();
-        sizes.sync();
+        theme?.sync();
+        sizes?.sync();
       }
       Object.assign(options, changes);
+      const { toolbar: showToolbar = true, credits = true, themeToggle = true, fontSizeControls = true, copyButton = true, controlsCompact = true, controlsPosition, controlsSize } = options;
       if ("animations" in changes || "appearAnimation" in changes) syncMotion(element, options);
-      element.classList.toggle("byVIEWcompact", options.controlsCompact !== false);
-      const bottom = options.controlsPosition === "bottom";
-      toolbar.dataset.size = ["xs", "small", "regular", "large", "xl"].includes(options.controlsSize) ? options.controlsSize : "regular";
-      if (!toolbar.childElementCount || ["credits", "themeToggle", "fontSizeControls", "copyButton"].some((key) => key in changes)) {
+      element.classList.toggle("byVIEWcompact", controlsCompact);
+      const bottom = controlsPosition === "bottom";
+      toolbar.dataset.size = ["xs", "small", "regular", "large", "xl"].includes(controlsSize) ? controlsSize : "regular";
+      if (showToolbar && (!toolbar.childElementCount || rebuild)) {
         controls.replaceChildren();
-        if (options.themeToggle !== false) controls.appendChild(theme.button);
-        if (options.fontSizeControls !== false) controls.appendChild(sizes.group);
-        if (options.copyButton !== false) controls.appendChild(copy);
+        if (themeToggle) {
+          theme ??= createThemeToggle(element);
+          controls.appendChild(theme.button);
+        }
+        if (fontSizeControls) {
+          sizes ??= createFontSizeControls(content);
+          controls.appendChild(sizes.group);
+        }
+        if (copyButton) {
+          copy ??= createCopyButton(getText, copyLabel);
+          controls.appendChild(copy);
+        }
         toolbar.replaceChildren();
-        if (options.credits !== false) toolbar.appendChild(info);
+        if (credits) toolbar.appendChild(info);
         if (controls.childElementCount) toolbar.appendChild(controls);
       }
-      const visible = options.toolbar !== false && toolbar.childElementCount > 0;
+      const visible = showToolbar && toolbar.childElementCount > 0;
       element.classList.toggle("byVIEWbottom", visible && bottom);
       if (!visible) toolbar.remove();
       else if (bottom && toolbar !== element.lastElementChild) element.appendChild(toolbar);
