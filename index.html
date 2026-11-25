@@ -802,6 +802,7 @@ Write Markdown here..."></textarea>
       "use strict";
 
       document.addEventListener("DOMContentLoaded", () => {
+        const endScript = "</" + "script>";
         ("use strict");
 
         // Keep templates aligned with the code while preserving their content indentation.
@@ -1141,7 +1142,7 @@ Write Markdown here..."></textarea>
                     min-height: 100vh;
                   }
                 </style>
-                ${'<script src="https://cdn.jsdelivr.net/gh/byuwur/code.view@v2.3/code.min.js"><\/script>'} ${'<script src="md.js"><\/script>'}
+                ${`<script src="https://cdn.jsdelivr.net/gh/byuwur/code.view@v2.3/code.min.js">${endScript} <script src="md.js">${endScript}`}
               </head>
               <body>
                 <main id="document" data-theme="light" aria-label="Rendered Markdown"></main>
@@ -1242,21 +1243,7 @@ Write Markdown here..."></textarea>
           setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
-        function renderIntegration(title, assets, body) {
-          const html = [
-            "<!doctype html>",
-            '<html lang="en">',
-            "  <head>",
-            '    <meta charset="UTF-8">',
-            '    <meta name="viewport" content="width=device-width, initial-scale=1">',
-            `    <title>${title}</title>`,
-            ...assets,
-            "  </head>",
-            "  <body>",
-            ...body,
-            "  </body>",
-            "</html>"
-          ].join("\n");
+        function renderIntegration(html) {
           if (html === integrationHTML) return;
           integrationHTML = html;
           if (typeof window.byCODEviewer === "function") {
@@ -1274,20 +1261,26 @@ Write Markdown here..."></textarea>
           const cdn = mode === "cdn";
           const min = cdn ? ".min" : "";
           const path = cdn ? "https://cdn.jsdelivr.net/gh/byuwur/md.view@latest/" : "";
-          const endScript = "</" + "script>";
-          renderIntegration(
-            "MD.view",
-            [`    <link rel="stylesheet" href="${path}md${min}.css" />`, `    <script src="${path}md${min}.js" defer>${endScript}`],
-            [
-              '    <div id="document" class="light" data-theme="github"></div>',
-              "    <script>",
-              '      document.addEventListener("DOMContentLoaded", () => {',
-              `        const markdown = ${JSON.stringify("# A little Markdown. A real document.\n\nWrite something useful. Let **MD.view** handle the rendering.")};`,
-              '        byMDviewer(document.getElementById("document"), markdown);',
-              "      });",
-              `    ${endScript}`
-            ]
-          );
+          // prettier-ignore
+          renderIntegration(/* HTML */ `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MD.view</title>
+    <link rel="stylesheet" href="${path}md${min}.css" />
+    ${`<script src="${path}md${min}.js" defer>${endScript}`}
+  </head>
+  <body>
+    <div id="document" class="light" data-theme="github"></div>
+    ${`<script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const markdown = ${JSON.stringify("# A little Markdown. A real document.\n\nWrite something useful. Let **MD.view** handle the rendering.")};
+        byMDviewer(document.getElementById("document"), markdown);
+      });
+    ${endScript}`}
+  </body>
+</html>`);
           document.getElementById("integration-note").textContent = cdn ? "CDN follows the latest release; updates may take time to reach caches." : "Place the HTML beside md.js and md.css.";
           document.getElementById("integration-feedback").textContent = "";
         }
