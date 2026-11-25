@@ -61,6 +61,16 @@ test("MD library", { timeout: 30000 }, async (t) => {
     });
   });
 
+  await t.test("bare links retain balanced delimiters and leave trailing punctuation in the text", async () => {
+    const url = "https://example.test/a(b)[c]";
+    for (const suffix of ["))", "]]!"]) {
+      const tokens = await page.evaluate((source) => byMDviewer.parseInline(source), url + suffix);
+      assert.equal(tokens[0].url, url);
+      assert.equal(tokens[0].to, url.length);
+      assert.equal(tokens[1].text, suffix);
+    }
+  });
+
   await t.test("keeps HTML and unsafe links inert", async () => {
     await page.evaluate(() =>
       byMDviewer(

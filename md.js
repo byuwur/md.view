@@ -695,21 +695,25 @@
    * @returns {string}
    */
   const trimBareUrl = (value) => {
-    let url = value;
-    while (/[.,!?;:]$/.test(url)) url = url.slice(0, -1);
+    let end = value.length;
+    while (end > 0 && ".,!?;:".includes(value[end - 1])) end--;
     const pairs = [
       ["(", ")"],
       ["[", "]"]
     ];
     for (const [open, close] of pairs) {
-      while (url.endsWith(close)) {
-        const opens = [...url].filter((char) => char === open).length;
-        const closes = [...url].filter((char) => char === close).length;
-        if (closes <= opens) break;
-        url = url.slice(0, -1);
+      if (value[end - 1] !== close) continue;
+      let excess = 0;
+      for (let index = 0; index < end; index++) {
+        if (value[index] === close) excess++;
+        else if (value[index] === open) excess--;
+      }
+      while (excess > 0 && value[end - 1] === close) {
+        end--;
+        excess--;
       }
     }
-    return url;
+    return value.slice(0, end);
   };
 
   /**
