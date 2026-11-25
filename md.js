@@ -1630,6 +1630,19 @@
   }
 
   // ===== PUBLIC API =====
+  const sourceURL = (input, options) => {
+    if (options?.sourceType === "text") return;
+    if (typeof input === "string") return /^(?:https?:\/\/|\.{1,2}\/|\/(?![/*]))[^\s]+$/i.test(input) ? input : undefined;
+    if (input && Object.hasOwn(input, "url") && typeof input.url === "string" && Object.keys(input).length === 1) return input.url.trim() || undefined;
+  };
+  const fetchSource = async (url, signal) => {
+    const response = await fetch(url, { signal });
+    if (!response.ok) throw new Error(`Unable to load source: HTTP ${response.status}.`);
+    return response.text();
+  };
+
+  const sourceRequests = new WeakMap();
+
   /**
    * Main API.
    * Renders Markdown into an HTMLElement.
@@ -1670,7 +1683,8 @@
    */
   function byMDviewer(element, markdown, options = {}) {
     if (!(element instanceof HTMLElement)) throw new TypeError("byMDviewer: element must be an HTMLElement.");
-    let source = markdown;
+    const url = sourceURL(markdown, options);
+    let source = url ? "" : markdown;
     // Pull Markdown from another element when supplied, otherwise use the target element's own text content.
     if (source instanceof HTMLElement) source = source.textContent;
     else if (source === undefined || source === null) source = element.textContent;
@@ -1725,6 +1739,8 @@
     const content = document.createElement("div");
     content.className = "byMDcontent";
     applyContentAppearance(element, options, content);
+    sourceRequests.get(element)?.abort();
+    sourceRequests.delete(element);
     // Clear the target safely.
     element.textContent = "";
     element.classList.add(documentClass);
@@ -1740,7 +1756,8 @@
       );
     }
     // Normalize line endings and remove the BOM.
-    const normalized = source.replace(/\r\n?/g, "\n").replace(/^\uFEFF/, "");
+    const normalize = (text) => text.replace(/\r\n?/g, "\n").replace(/^\uFEFF/, "");
+    let normalized = url ? undefined : normalize(source);
     element.appendChild(content);
     const renderContent = () => {
       content.replaceChildren();
@@ -1759,10 +1776,37 @@
         }
       }
     };
-    renderContent();
+    let ready;
+    if (url) {
+      const request = new AbortController();
+      sourceRequests.set(element, request);
+      content.textContent = "Loading source...";
+      ready = fetchSource(url, request.signal)
+        .then((text) => {
+          if (request.signal.aborted || content.parentNode !== element) return false;
+          source = text;
+          normalized = normalize(text);
+          renderContent();
+          return true;
+        })
+        .catch((error) => {
+          if (!request.signal.aborted && content.parentNode === element) {
+            content.setAttribute("role", "alert");
+            content.textContent = error.message;
+          }
+          return false;
+        })
+        .finally(() => {
+          if (sourceRequests.get(element) === request) sourceRequests.delete(element);
+        });
+    } else {
+      renderContent();
+      ready = Promise.resolve(true);
+    }
     // Copy uses the caller's original source, preserving line endings that were normalized only for display.
     const updateControls = mountControls(element, content, options, (event) => (event.shiftKey ? source : getPlainText(element)), byMDviewer.VERSION, "Copy text (Shift+click for Markdown)");
     return {
+      ready,
       setOptions(changes) {
         if (content.parentNode !== element) return;
         if ("headingIdPrefix" in changes && typeof changes.headingIdPrefix !== "string") throw new TypeError("headingIdPrefix must be a string.");
@@ -1770,7 +1814,7 @@
           (key) => key in changes && changes[key] !== options[key]
         );
         updateControls(options, changes);
-        if (redraw) renderContent();
+        if (redraw && normalized !== undefined) renderContent();
       }
     };
   }

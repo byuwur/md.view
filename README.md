@@ -61,7 +61,16 @@ byMDviewer(target, document.getElementById("markdownSource"));
 
 Use `byMDviewer(target)` instead when the target itself contains Markdown.
 
-`byMDviewer(target, markdown?, options?)` renders synchronously and returns a controller with `setOptions(changes)`. Invalid targets or source types throw `TypeError`. To replace the document, call the viewer again with the new Markdown source.
+A source string beginning with `https://`, `http://`, `/`, `./`, or `../` and containing no whitespace loads a file. Use `{ url: "example.md" }` for a bare filename. To display a URL string literally, pass `{ sourceType: "text" }` in the options.
+
+```javascript
+const viewer = byMDviewer(target, "./example.md");
+await viewer.ready;
+```
+
+Relative URLs resolve against the page. Cross-origin files require CORS. A failed or superseded load resolves `ready` to `false`.
+
+`byMDviewer(target, markdown?, options?)` renders inline Markdown synchronously and returns a controller with `ready` and `setOptions(changes)`. Invalid targets or source types throw `TypeError`. To replace the document, call the viewer again with the new Markdown source.
 
 ### Options
 

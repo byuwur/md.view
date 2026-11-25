@@ -103,5 +103,31 @@ test("MD library", { timeout: 30000 }, async (t) => {
     assert.equal(await page.evaluate(() => window.copied), "# current");
   });
 
+  await t.test("loads a source URL through the public API", async () => {
+    const url = "https://files.test/sample";
+    await page.route(url, (route) =>
+      route.fulfill({
+        contentType: "text/plain",
+        headers: { "Access-Control-Allow-Origin": "*" },
+        body: "# Rendered file"
+      })
+    );
+    const displayed = await page.evaluate(async (url) => {
+      const viewer = byMDviewer(root, url);
+      return (await viewer.ready) && root.textContent;
+    }, url);
+    assert.match(displayed, /Rendered file/);
+  });
+
+  await t.test("synchronous Markdown can replace a pending URL", async () => {
+    const rendered = await page.evaluate(async () => {
+      const old = byMDviewer(root, "./pending.md");
+      byMDviewer(root, "# Current");
+      return old.ready;
+    });
+    assert.equal(rendered, false);
+    assert.equal(await page.getByRole("heading", { name: "Current" }).count(), 1);
+  });
+
   assert.deepEqual(errors, [], "No uncaught browser errors");
 });

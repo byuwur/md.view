@@ -1071,7 +1071,7 @@ Write Markdown here..."></textarea>
             const target = previewWindow.document.getElementById("document");
             const scrollTop = resetScroll ? 0 : previewWindow.scrollY;
             const start = performance.now();
-            viewer = previewWindow.byMDviewer(target, markdown, { ...state.options, ...(viewer ? appearance : previewAppearance()) });
+            viewer = previewWindow.byMDviewer(target, markdown, { ...state.options, ...(viewer ? appearance : previewAppearance()), sourceType: "text" });
             const duration = performance.now() - start;
             const hasContent = !!markdown.trim();
             previewWindow.scrollTo(0, scrollTop);
