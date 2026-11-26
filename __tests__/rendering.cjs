@@ -84,8 +84,10 @@ test("MD library", { timeout: 30000 }, async (t) => {
     assert.equal(await page.evaluate(() => window.injected), undefined);
   });
 
-  await t.test("the header previews and copies rendered text or the current Markdown", async () => {
+  await t.test("the header previews and copies rendered text or the current Markdown", async (t) => {
+    t.after(() => page.evaluate(() => root.style.removeProperty("width")));
     await page.evaluate(() => {
+      root.style.width = "18rem";
       byMDviewer(root, "# stale");
       byMDviewer(root, "# current\r\n");
       window.copied = null;
@@ -100,10 +102,16 @@ test("MD library", { timeout: 30000 }, async (t) => {
     });
     assert.equal(await page.locator(".byMDcontent h1").textContent(), "current");
     const copy = page.locator(".byVIEWcopy");
+    const idle = await copy.boundingBox();
     await copy.hover();
     assert.equal(await copy.innerText(), "Copy");
     await copy.click();
     assert.equal(await page.evaluate(() => window.copied), "current");
+    assert.equal(await copy.innerText(), "Copied!");
+    const feedback = await copy.boundingBox();
+    assert.equal(feedback.y, idle.y);
+    assert.equal(feedback.height, idle.height);
+    assert.ok(feedback.width > idle.width);
     await page.keyboard.down("Shift");
     assert.equal(await copy.innerText(), "Copy MD");
     assert.equal(await copy.getAttribute("title"), "Copy text (Shift+click for Markdown)");

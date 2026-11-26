@@ -305,7 +305,6 @@
   opacity: 1;
 }
 .byMDdocument.byVIEWcompact > .byVIEWtoolbar .byVIEWinfo {
-  flex: 1 1 auto;
   text-align: left;
 }
 .byMDdocument > .byVIEWtoolbar .byVIEWinfo a {
@@ -324,6 +323,14 @@
   gap: 0.375em;
   margin-left: auto;
   max-width: 100%;
+}
+.byMDdocument > .byVIEWtoolbar .byVIEWcontrols:has(.byVIEWcopySlot) {
+  width: 100%;
+}
+.byMDdocument.byVIEWcompact > .byVIEWtoolbar .byVIEWcontrols:has(.byVIEWcopySlot) {
+  /* Wrap the controls as a group independently of the hovered caption. */
+  flex: 1 1 16em;
+  width: auto;
 }
 .byMDdocument > .byVIEWtoolbar button {
   flex-shrink: 0;
@@ -363,12 +370,31 @@
   border: 0;
   border-radius: 0.375em;
 }
+.byMDdocument > .byVIEWtoolbar .byVIEWcopySlot {
+  display: flex;
+  justify-content: flex-end;
+  flex: 1 1 0;
+  /* Leave room for the icon and "Copied!" when the controls wrap. */
+  min-width: min(100%, calc(7ch + 2.5em));
+  max-width: max-content;
+}
 .byMDdocument > .byVIEWtoolbar .byVIEWcopy {
   display: inline-flex;
   align-items: center;
   gap: 0.25em;
+  max-width: 100%;
+}
+.byMDdocument > .byVIEWtoolbar .byVIEWcopy span {
+  white-space: nowrap;
+}
+.byMDdocument > .byVIEWtoolbar .byVIEWcopy[data-state] span::after {
+  content: attr(data-action);
+  display: block;
+  height: 0;
+  visibility: hidden;
 }
 .byMDdocument > .byVIEWtoolbar .byVIEWcopy svg {
+  flex: none;
   width: 1em;
   height: 1em;
   fill: currentColor;

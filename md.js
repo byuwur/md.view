@@ -250,6 +250,7 @@
     // WebKit cancels a pointer click if focus replaces the pressed text node.
     const text = button.lastElementChild.firstChild;
     if (text.data !== caption) text.data = caption;
+    button.lastElementChild.dataset.action = caption;
     button.title = copyTitle;
     button.setAttribute("aria-label", active && copyShiftPressed ? copyShiftText : copyTitle);
   };
@@ -293,8 +294,8 @@
       showCopyAction(button, true);
     });
     button.addEventListener("focus", () => showCopyAction(button, true));
-    const reset = () => {
-      if (button.dataset.state !== "error") showCopyAction(button, button.matches(":hover, :focus-visible"));
+    const reset = (event) => {
+      if (button.dataset.state !== "error") showCopyAction(button, button.matches(event.type === "pointerleave" ? ":focus-visible" : ":hover"));
     };
     button.addEventListener("pointerleave", reset);
     button.addEventListener("blur", reset);
@@ -362,7 +363,9 @@
         }
         if (copyButton) {
           copy ??= createCopyButton(getText);
-          controls.appendChild(copy);
+          const slot = node("div", "byVIEWcopySlot");
+          slot.appendChild(copy);
+          controls.appendChild(slot);
         }
         toolbar.replaceChildren();
         if (credits) toolbar.appendChild(info);
