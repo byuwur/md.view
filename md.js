@@ -12,7 +12,7 @@
   if (global.byMDviewer?.initialized) return;
 
   // ===== METADATA =====
-  byMDviewer.VERSION = "3.4"; // 2026-11-25
+  byMDviewer.VERSION = "3.5"; // 2026-11-26
   // Mirrored helpers are checked by code.view/.github/scripts/check-family.mjs.
   const componentName = "MD.view";
   const themeFile = "md";
