@@ -77,6 +77,13 @@ test("MD playground loads, updates, and copies a starter", { timeout: 30000 }, a
   assert.equal(await page.locator("#download-minified").getAttribute("href"), "https://github.com/byuwur/md.view/releases/latest/download/md.view.minified.zip");
   const preview = page.frameLocator("#preview-frame").locator(".byMDdocument");
   await preview.locator(".byMDparagraph").first().waitFor();
+  const copy = preview.locator(".byVIEWcopy");
+  await page.locator("#latest-release").focus();
+  await copy.hover();
+  await page.keyboard.down("Shift");
+  assert.equal(await copy.innerText(), "Copy MD");
+  await page.keyboard.up("Shift");
+  assert.equal(await copy.innerText(), "Copy");
   const sizes = await preview.evaluate((viewer) => {
     const [decrease, reset, increase] = viewer.querySelectorAll(".byVIEWfontSize");
     const text = viewer.querySelector(".byMDparagraph");

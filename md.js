@@ -239,13 +239,38 @@
     return { group: sizes, sync };
   };
 
-  /**
-   * Create a copy action for the complete source, including content outside the visible rendered chunk.
-   * @param {Function} getText Callback that returns the text to copy.
-   * @param {string} label Human-readable label.
-   * @returns {HTMLButtonElement}
-   */
-  const createCopyButton = (getText, label) => {
+  const copyHoverText = "Copy";
+  const copyShiftText = "Copy MD";
+  const copyTitle = "Copy text (Shift+click for Markdown)";
+  let copyShiftPressed = false;
+
+  const showCopyAction = (button, active) => {
+    const caption = active ? (copyShiftPressed ? copyShiftText : copyHoverText) : "Copy";
+    delete button.dataset.state;
+    button.lastElementChild.textContent = caption;
+    button.title = copyTitle;
+    button.setAttribute("aria-label", active && copyShiftPressed ? copyShiftText : copyTitle);
+  };
+
+  const syncCopyShift = (event) => {
+    if (event.type !== "blur" && event.key !== "Shift") return;
+    const pressed = !!event.shiftKey;
+    if (pressed === copyShiftPressed) return;
+    copyShiftPressed = pressed;
+    for (const button of document.querySelectorAll(`.${documentClass} > .byVIEWtoolbar .byVIEWcopy:is(:hover, :focus-visible)`)) showCopyAction(button, true);
+  };
+
+  // A hovered preview can receive pointer events while its host page still has keyboard focus.
+  const listenForCopyShift = (event) => {
+    const method = event?.type === "pagehide" ? "removeEventListener" : "addEventListener";
+    for (let frame = window; frame; frame = frame.frameElement?.ownerDocument.defaultView) {
+      frame[method]("keydown", syncCopyShift, true);
+      frame[method]("keyup", syncCopyShift, true);
+      frame[method]("blur", syncCopyShift);
+    }
+  };
+
+  const createCopyButton = (getText) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "byVIEWcopy";
@@ -257,21 +282,25 @@
     const caption = document.createElement("span");
     caption.setAttribute("aria-live", "polite");
     button.appendChild(caption);
+    listenForCopyShift();
+    window.addEventListener("pagehide", listenForCopyShift);
+    window.addEventListener("pageshow", listenForCopyShift);
+    showCopyAction(button, false);
+    button.addEventListener("pointerenter", (event) => {
+      copyShiftPressed = event.shiftKey;
+      showCopyAction(button, true);
+    });
+    button.addEventListener("focus", () => showCopyAction(button, true));
     const reset = () => {
-      if (button.dataset.state === "error") return;
-      delete button.dataset.state;
-      caption.textContent = "Copy";
-      button.title = label;
-      button.setAttribute("aria-label", label);
+      if (button.dataset.state !== "error") showCopyAction(button, button.matches(":hover, :focus-visible"));
     };
-    reset();
-    button.addEventListener("mouseleave", reset);
-    button.addEventListener("focusout", reset);
+    button.addEventListener("pointerleave", reset);
+    button.addEventListener("blur", reset);
     button.addEventListener("click", async (event) => {
       button.disabled = true;
       let message = "Copied!";
       try {
-        await navigator.clipboard.writeText(getText(event));
+        await navigator.clipboard.writeText(getText(event.shiftKey || (event.detail === 0 && copyShiftPressed)));
         caption.textContent = message;
         button.dataset.state = "success";
       } catch {
@@ -280,7 +309,7 @@
         message = "Copy failed. Check clipboard access.";
       } finally {
         button.disabled = false;
-        button.title = `${message} ${label}`;
+        button.title = `${message} ${copyTitle}`;
         button.setAttribute("aria-label", button.title);
       }
     });
@@ -288,7 +317,7 @@
   };
 
   // Keep the toolbar mounted while the current renderer applies option changes.
-  const mountControls = (element, content, initialOptions, getText, version, copyLabel = "Copy source") => {
+  const mountControls = (element, content, initialOptions, getText, version) => {
     const toolbar = node("div", "byVIEWtoolbar");
     const controls = node("div", "byVIEWcontrols");
     controls.setAttribute("role", "group");
@@ -330,7 +359,7 @@
           controls.appendChild(sizes.group);
         }
         if (copyButton) {
-          copy ??= createCopyButton(getText, copyLabel);
+          copy ??= createCopyButton(getText);
           controls.appendChild(copy);
         }
         toolbar.replaceChildren();
@@ -1804,7 +1833,7 @@
       ready = Promise.resolve(true);
     }
     // Copy uses the caller's original source, preserving line endings that were normalized only for display.
-    const updateControls = mountControls(element, content, options, (event) => (event.shiftKey ? source : getPlainText(element)), byMDviewer.VERSION, "Copy text (Shift+click for Markdown)");
+    const updateControls = mountControls(element, content, options, (shiftPressed) => (shiftPressed ? source : getPlainText(element)), byMDviewer.VERSION);
     return {
       ready,
       setOptions(changes) {

@@ -84,10 +84,10 @@ test("MD library", { timeout: 30000 }, async (t) => {
     assert.equal(await page.evaluate(() => window.injected), undefined);
   });
 
-  await t.test("replacement preserves only the new document and copies its source", async () => {
+  await t.test("the header previews and copies rendered text or the current Markdown", async () => {
     await page.evaluate(() => {
       byMDviewer(root, "# stale");
-      byMDviewer(root, "# current");
+      byMDviewer(root, "# current\r\n");
       window.copied = null;
       Object.defineProperty(navigator, "clipboard", {
         configurable: true,
@@ -99,8 +99,18 @@ test("MD library", { timeout: 30000 }, async (t) => {
       });
     });
     assert.equal(await page.locator(".byMDcontent h1").textContent(), "current");
-    await page.locator(".byVIEWcopy").click({ modifiers: ["Shift"] });
-    assert.equal(await page.evaluate(() => window.copied), "# current");
+    const copy = page.locator(".byVIEWcopy");
+    await copy.hover();
+    assert.equal(await copy.innerText(), "Copy");
+    await copy.click();
+    assert.equal(await page.evaluate(() => window.copied), "current");
+    await page.keyboard.down("Shift");
+    assert.equal(await copy.innerText(), "Copy MD");
+    assert.equal(await copy.getAttribute("title"), "Copy text (Shift+click for Markdown)");
+    await copy.click();
+    assert.equal(await page.evaluate(() => window.copied), "# current\r\n");
+    await page.keyboard.up("Shift");
+    assert.equal(await copy.innerText(), "Copy");
   });
 
   await t.test("loads a source URL through the public API", async () => {

@@ -103,7 +103,7 @@ Pass options as the third argument, such as `byMDviewer(target, markdown, { brea
 | `controlsCompact`   | `true`              | Keep credits beside controls; `false` stacks them. Wraps as needed.                                                                 |
 | `controlsPosition`  | `"top"`             | Sticky `"top"` or `"bottom"` toolbar; invalid values use `"top"`.                                                                   |
 
-Plain-text copying preserves paragraph and code line breaks, excluding controls and credits. Copy requires clipboard permission in a secure context.
+Plain-text copying preserves paragraph and code line breaks, excluding controls and credits. While the header’s **Copy** button is hovered or focused, holding Shift changes its label to **Copy MD**. Shift+click copies the original Markdown. Copy requires clipboard permission in a secure context.
 
 Read the library version with `byMDviewer.VERSION`.
 
