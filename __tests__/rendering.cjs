@@ -102,14 +102,20 @@ test("MD library", { timeout: 30000 }, async (t) => {
     });
     assert.equal(await page.locator(".byMDcontent h1").textContent(), "current");
     const copy = page.locator(".byVIEWcopy");
-    const idle = await copy.boundingBox();
+    // Layout offsets exclude the button's press animation.
+    const layout = () => copy.evaluate((button) => ({
+      top: button.offsetTop,
+      height: button.offsetHeight,
+      width: button.offsetWidth
+    }));
+    const idle = await layout();
     await copy.hover();
     assert.equal(await copy.innerText(), "Copy");
     await copy.click();
     assert.equal(await page.evaluate(() => window.copied), "current");
     assert.equal(await copy.innerText(), "Copied!");
-    const feedback = await copy.boundingBox();
-    assert.equal(feedback.y, idle.y);
+    const feedback = await layout();
+    assert.equal(feedback.top, idle.top);
     assert.equal(feedback.height, idle.height);
     assert.ok(feedback.width > idle.width);
     await page.keyboard.down("Shift");
